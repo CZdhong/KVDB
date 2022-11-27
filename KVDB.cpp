@@ -340,7 +340,7 @@ int KVDBHandler::expire_del(const std::string key, const time_t time){
 //                size,
 //                ret
 //        );
-            return KVDB_IO_ERROR
+            return KVDB_IO_ERROR;
         }
     }
     return KVDB_OK;

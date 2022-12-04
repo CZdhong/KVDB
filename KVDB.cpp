@@ -330,7 +330,6 @@ int KVDBHandler::expire_del(const std::string key, const time_t time){
         ret += write(file, &len_key, sizeof(len_key));
         ret += write(file, key.c_str(), len_key);
         ret += write(file, &len_value, sizeof(len_value));
-        index[key] = offset;
         size_t size;
         size = sizeof(len_key) + len_key + sizeof(len_value) + sizeof(time2);
         if (ret != size) {
@@ -342,6 +341,7 @@ int KVDBHandler::expire_del(const std::string key, const time_t time){
 //        );
             return KVDB_IO_ERROR;
         }
+        index.erase[key];
     }
     return KVDB_OK;
 }

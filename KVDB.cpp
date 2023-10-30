@@ -5,6 +5,56 @@
 #include "unistd.h"
 #include "KVDB.h"
 
+LRU::LRU(int volume) :volume(volume){}
+
+void LRU::set(const std::string &key, const std::string &value) {
+    if (cache[key] == NULL)
+        cache[key] = new LRU_Node();
+    cache[key]->value = value;
+    if (head) {
+        head->prior = cache[key];
+        cache[key]->next = head;
+    }
+    head = cache[key];
+    if (tail == NULL)
+        tail = cache[key];
+    if (++count > volume) {
+        LRU_Node *temp = tail->prior;
+        delete tail;
+        tail = temp;
+    }
+}
+
+bool LRU::get(const std::string &key, std::string &value) {
+    if (cache.find(key) == cache.end())
+        return false;
+    value = cache[key]->value;
+    if (cache[key] == head)
+        return true;
+    if (cache[key] != tail && cache[key] != head) {
+        cache[key]->next->prior = cache[key]->prior;
+        cache[key]->prior->next = cache[key]->next;
+    } else {
+        tail = tail->prior;
+    }
+    cache[key]->next = head;
+    head = cache[key];
+    return true;
+}
+
+bool LRU::del(const std::string &key) {
+    if (cache.find(key) == cache.end())
+        return false;
+    if(cache[key]==head){
+        head=head->next;
+    }else if(cache[key]==tail){
+        tail=tail->prior;
+    }
+    delete cache[key];
+    cache.erase(key);
+    return true;
+}
+
 KVDBHandler::KVDBHandler(const std::string &db_file) {
     this->_fd = ::open(db_file.c_str(), O_APPEND | O_CREAT | O_RDWR, S_IRWXU);
     if (0 > this->_fd) {
@@ -112,6 +162,7 @@ int KVDBHandler::set(const std::string &key, const std::string value, const time
     if (time != 0) {
         minheap.push({key, time});
     }
+    cache.set(key,value);
     return KVDB_OK;
 }
 
@@ -154,6 +205,7 @@ int KVDBHandler::del(const std::string &key) {
 //        );
         return KVDB_IO_ERROR;
     }
+    cache.del(key);
     index.erase(key);
     return KVDB_OK;
 }
@@ -176,6 +228,7 @@ int KVDBHandler::get(const std::string &key, std::string &value, time_t time) {
 //        );
         return KVDB_INVALID_KEY;
     }
+    if(cache.get(key,value)) return KVDB_OK;
     try {
         index.at(key);
     } catch (const std::out_of_range &e) {
@@ -287,7 +340,7 @@ int KVDBHandler::expires(const std::string &key, int n) {
     return KVDB_OK;
 }
 
-int KVDBHandler::expire_del(const std::string key, const time_t time){
+int KVDBHandler::expire_del(const std::string key, const time_t time) {
     int len_key, len_value;
     const int &file = _fd;
     std::string value;
@@ -341,7 +394,8 @@ int KVDBHandler::expire_del(const std::string key, const time_t time){
 //        );
             return KVDB_IO_ERROR;
         }
-        index.erase[key];
+        cache.del(key);
+        index.erase(key);
     }
     return KVDB_OK;
 }

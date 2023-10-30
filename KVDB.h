@@ -6,6 +6,7 @@
 #include<vector>
 #include<time.h>
 
+const int maxsize = 10;
 const int KVDB_OK = 0;
 const int KVDB_INVALID_AOFPATH = 1;
 const int KVDB_INVALID_KEY = 2;
@@ -13,6 +14,12 @@ const int KVDB_NO_SPACE_LEFT_ON_DEVICES = 3;
 const int KVDB_FAILED_SEEKFILE = 4;
 const int KVDB_IO_ERROR = 5;
 const int KVDB_MALLOC_ERROR = 6;
+
+struct LRU_Node {
+    std::string value;
+    LRU_Node *prior = NULL;
+    LRU_Node *next = NULL;
+};
 
 struct tmp {
     std::string key;
@@ -24,6 +31,31 @@ struct tmp2 {
         return a.time > b.time;
     }
 };
+
+struct type {
+    std::string key;
+    std::string value;
+};
+
+
+class LRU {
+private:
+    std::unordered_map<std::string, LRU_Node *> cache;
+    LRU_Node *head = NULL;
+    LRU_Node *tail = NULL;
+    int volume;
+    int count = 0;
+public:
+    LRU(int volume = 10);
+
+    void set(const std::string &key, const std::string &value);
+
+    bool get(const std::string &key, std::string &value);
+
+    bool del(const std::string &key);
+
+};
+
 
 class KVDBHandler {
 public:
@@ -41,7 +73,7 @@ public:
 
     int expires(const std::string &key, int n);
 
-    int expire_del(const std::string key,const time_t time);
+    int expire_del(const std::string key, const time_t time);
 
     std::string get_path();
 
@@ -50,5 +82,6 @@ private:
     std::unordered_map<std::string, off_t> index;
     std::string file_path;
     std::priority_queue<tmp, std::vector<tmp>, tmp2> minheap;
+    LRU cache;
 };
 
